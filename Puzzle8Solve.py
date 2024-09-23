@@ -1,9 +1,3 @@
-# estado prueba = [
-#     [4, 1, 3],
-#     [7, 2, 6],
-#     [9, 5, 8]
-# ]
-
 # Usamos la libreria heapq para gestionar una lista de prioridades,
 # esta libreria es util para manejar una colecion de elementos
 # donde siempre se quiere acceder al valor minimo o maximo.
@@ -125,8 +119,6 @@ def resolver_puzzle_8(estado_inicial):
 
     # Mientras haya estados por explorar en open_set.
     while open_set:
-        print("OPEN SET: ", open_set)
-        print("CLOSED SET: ", closed_set)
         # Toma el estado con el menor valor f.
         actual = heapq.heappop(open_set)
 
