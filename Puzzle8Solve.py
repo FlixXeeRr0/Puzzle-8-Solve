@@ -1,58 +1,53 @@
-# Usamos la libreria heapq para gestionar una lista de prioridades,
-# esta libreria es util para manejar una colecion de elementos
-# donde siempre se quiere acceder al valor minimo o maximo.
 import heapq
-
-# Clase Estado que representa un tablero del Puzzle 8 en un punto determinado.
 class Estado:
     
     # Constructor de la clase Estado.
-    #   - tablero: El tablero actual del puzzle, una lista de listas (3x3).
-    #   - padre: El estado previo que llevó a este estado (para reconstruir el camino).
+    #   - tablero: El tablero actual del puzzle.
+    #   - padre: El estado previo.
     #   - g: El costo acumulado desde el estado inicial hasta el estado actual.
     #   - h: La heurística estimada de la distancia hasta el objetivo.
     #   - f: El costo total (f = g + h).
     #   - movimiento: El movimiento que se realizó para llegar a este estado.
-    def __init__(self, tablero, padre=None, g=0, h=0, movimiento="Estado Inicial"):
+    #   - dimension: La dimensión del tablero (3x3 o 4x4).
+    def __init__(self, tablero, padre=None, g=0, h=0, movimiento="Estado Inicial", dimension=3):
         self.tablero = tablero
         self.padre = padre
         self.g = g
         self.h = h
         self.f = self.g + self.h
         self.movimiento = movimiento
-
-    # Método para comparar dos estados según su valor f,
-    # para usarlos en la cola de prioridad.
+        self.dimension = dimension
+        
     def __lt__(self, other):
         return self.f < other.f
 
-    # Comprueba si el tablero actual es el estado objetivo:
-    #   - El estado objetivo es el tablero ordenado como 
-    #   [1, 2, 3],
-    #   [4, 5, 6],
-    #   [7, 8, 9].
+    # Comprueba si el tablero actual es el estado objetivo
     def es_objetivo(self):
-        objetivo = [
-            [1, 2, 3],
-            [4, 5, 6],
-            [7, 8, 9]
-        ]
+        if self.dimension == 3:
+            objetivo = [
+                [1, 2, 3],
+                [4, 5, 6],
+                [7, 8, 9]
+            ]
+        else:
+            objetivo = [
+                [1, 2, 3, 4],
+                [5, 6, 7, 8],
+                [9, 10, 11, 12],
+                [13, 14, 15, 16]
+            ]
         return self.tablero == objetivo
 
-    # Encuentra la posición del espacio vacío
-    # (representado por el número 9) en el tablero.
     def encontrar_vacio(self):
-        for i in range(3):  # Itera sobre las Filas.
-            for j in range(3):  # Itera sobre las Columnas.
-                if self.tablero[i][j] == 9:
+        for i in range(self.dimension):
+            for j in range(self.dimension):
+                if self.tablero[i][j] == (self.dimension ** 2):
                     return i, j  # Devuelve las coordenadas (i, j) del espacio vacío.
 
     # Genera los posibles estados vecinos moviendo el espacio vacío en las 4
     # direcciones posibles (arriba, abajo, izquierda, derecha).
     def generar_vecinos(self):
         vecinos = []
-        
-        # Encuentra la posición del espacio vacío.
         x, y = self.encontrar_vacio()
         movimientos = [
             (-1, 0, "Arriba"),
@@ -66,52 +61,38 @@ class Estado:
             nuevo_x, nuevo_y = x + dx, y + dy
 
             # Verifica si el nuevo movimiento está dentro de los límites del tablero.
-            if 0 <= nuevo_x < 3 and 0 <= nuevo_y < 3:
+            if 0 <= nuevo_x < self.dimension and 0 <= nuevo_y < self.dimension:
                 # Crea una copia del tablero para evitar modificar el original.
                 nuevo_tablero = [fila[:] for fila in self.tablero]
-                # Intercambia la posición del espacio vacío con el nuevo espacio.
+                # Intercambia las posiciones.
                 nuevo_tablero[x][y], nuevo_tablero[nuevo_x][nuevo_y] = nuevo_tablero[nuevo_x][nuevo_y], nuevo_tablero[x][y]
                 # Crea un nuevo estado vecino y lo agrega a la lista de vecinos.
-                vecinos.append(Estado(nuevo_tablero, self, self.g + 1, movimiento=direccion))
+                vecinos.append(Estado(nuevo_tablero, self, self.g + 1, movimiento=direccion, dimension=self.dimension))
 
-        return vecinos  # Devuelve la lista de estados vecinos.
+        return vecinos
 
     # Calcula la heurística del tablero actual usando la distancia de Manhattan.
     # La distancia de Manhattan es la suma de las distancias en los ejes x, y
     # desde cada pieza hasta su posición objetivo.
     def calcular_heuristica(self):
-        objetivo = [
-            [1, 2, 3],
-            [4, 5, 6],
-            [7, 8, 9]
-        ]
-        
-        # Inicializa la distancia total en 0.
         distancia = 0  
-        for i in range(3):  # Itera sobre las Filas.
-            for j in range(3):  # Itera sobre las Columnas.
+        for i in range(self.dimension):
+            for j in range(self.dimension):
                 valor = self.tablero[i][j]
-                if valor != 9:  # No cuenta el espacio vacío en el cálculo.
-                    # Calcula la posición objetivo de la pieza actual.
-                    objetivo_x = (valor - 1) // 3
-                    objetivo_y = (valor - 1) % 3
+                if valor != (self.dimension ** 2):
+                    objetivo_x = (valor - 1) // self.dimension # División entera para obtener la fila.
+                    objetivo_y = (valor - 1) % self.dimension # Modulo 3 para obtener la columna.
                     # Suma la distancia de Manhattan para esa pieza.
                     distancia += abs(i - objetivo_x) + abs(j - objetivo_y)
-        
-        # Asigna la distancia total a la heurística h.
+
         self.h = distancia
-        # Calcula el valor f actualizado.
         self.f = self.g + self.h
 
 
-# Implementa el algoritmo A* para resolver el puzzle 8.
-#   - Usa una lista de prioridades (cola de prioridad) para gestionar 
-#   los estados a explorar (open_set).
-#   - Usa un conjunto (closed_set) para almacenar los estados que ya 
-#   fueron explorados.
+# Implementacion del algoritmo A*
 def resolver_puzzle_8(estado_inicial):
     # Cola de prioridad que almacena los estados por explorar.
-    open_set = [] 
+    open_set = []
     # Inserta el estado inicial en la cola de prioridad.
     heapq.heappush(open_set, estado_inicial) 
     # Conjunto de estados ya explorados.
@@ -122,8 +103,6 @@ def resolver_puzzle_8(estado_inicial):
         # Toma el estado con el menor valor f.
         actual = heapq.heappop(open_set)
 
-        # Si el estado actual es el objetivo, se reconstruye el camino y
-        # retorna la solución.
         if actual.es_objetivo():
             return reconstruir_camino(actual)
 
@@ -142,13 +121,10 @@ def resolver_puzzle_8(estado_inicial):
 
             # Agrega el vecino a la cola de prioridad.
             heapq.heappush(open_set, vecino)
-
-    # Si no hay solución, devuelve una lista vacía.
     return []
 
 
-# Reconstruye el camino desde el estado objetivo hasta el estado inicial,
-# siguiendo la cadena de 'padres'.
+# Reconstruye el camino desde el estado objetivo hasta el estado inicial.
 def reconstruir_camino(estado):
     camino = []
     actual = estado
@@ -164,16 +140,34 @@ def reconstruir_camino(estado):
     return camino[::-1]
 
 
+
+# Funcion para solicitar al usuario si la matriz sera de 3x3 o 4x4
+def leer_dimension_tablero():
+    print("""
+===============================================================
+==        Seleccione un tipo de tablero para el puzzle       ==
+===============================================================""")
+    print("\t1. 3x3")
+    print("\t2. 4x4")
+    print("===============================================================")
+    while True:
+        opcion = input("Ingrese una de las opciones (1,2): ")
+        if opcion in ["1", "2"]:
+            break
+        print("Opción inválida. Inténtalo de nuevo.")
+    return opcion
+    
+
 # Función para leer el estado inicial del puzzle ingresado por el usuario.
-def leer_estado_inicial():
+def leer_estado_inicial(dimension):
     estado_inicial = []
     print("""
 ===============================================================
-==        Introduce el estado inicial del Puzzle 8           ==
-==            (usa '9' para el espacio vacío)                ==
+==          Introduce el estado inicial del Puzzle           ==
+==   (usa '9' para el espacio vacío en 3x3 o '16' para 4x4)  ==
 ===============================================================""")
     print(" NOTA: Los números deben estar separados por un espacio.\n")
-    for i in range(3):
+    for i in range(dimension):
         # Lee cada fila del tablero desde la entrada del usuario.
         fila = input(f"Introduce la fila {i+1}: ")
         estado_inicial.append([int(x) for x in fila.split()])
@@ -181,23 +175,45 @@ def leer_estado_inicial():
     print("===============================================================")
     return estado_inicial  # Devuelve el tablero inicial ingresado por el usuario.
 
-# Asignar el estado inicial ingresado por el usuario.
-# estado_inicial = leer_estado_inicial()
-estado_inicial = [
-    [4, 1, 3],
-    [7, 2, 6],
-    [9, 5, 8],
-]
 
-# Crear el estado inicial como un objeto de la clase Estado.
-estado_inicial_obj = Estado(estado_inicial)
+
+# INICIO DE LA EJECUCIÓN DEL PROGRAMA
+
+# Diccionario para mapear el tipo de tablero a su respectiva dimensión.
+tablero_Enum = {
+    1: 3,
+    2: 4,
+}
+# Elegir el tipo de tablero
+tipo_tablero = leer_dimension_tablero()
+dimension = tablero_Enum[int(tipo_tablero)]
+
+# Asignar el estado inicial ingresado por el usuario.
+# estado_inicial = leer_estado_inicial(dimension)
+
+# Tableros de prueba
+if dimension == 3:
+    estado_inicial = [
+        [4, 1, 3],
+        [7, 2, 6],
+        [9, 5, 8],
+    ]
+else:
+    estado_inicial = [
+        [15, 1, 2, 4],
+        [7, 6, 3, 11],
+        [5, 16, 9, 10],
+        [14, 13, 8, 12],
+    ]
+
+# Crear el estado inicial.
+estado_tablero = Estado(estado_inicial, dimension=dimension)
 # Calcula la heurística del estado inicial.
-estado_inicial_obj.calcular_heuristica()
+estado_tablero.calcular_heuristica()
 
 # Resolver el puzzle.
-camino_resuelto = resolver_puzzle_8(estado_inicial_obj)
+camino_resuelto = resolver_puzzle_8(estado_tablero)
 
-# Imprimir los pasos para resolver el puzzle.
 if camino_resuelto:
     print("==              Pasos para resolver el Puzzle:               ==")
     print("===============================================================")
@@ -210,5 +226,4 @@ if camino_resuelto:
             print(fila)
         print("-------------------------------------")
 else:
-    # Mostramos un mensaje al usuario si no se encuentra la solución.
     print("Ups, el estado inicial del puzzle no tiene solución.")
